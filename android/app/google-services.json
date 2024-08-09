@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "811790952024",
+    "project_id": "tuneflow-9a028",
+    "storage_bucket": "tuneflow-9a028.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:811790952024:android:a40aa4c5230efaa1d50c2d",
+        "android_client_info": {
+          "package_name": "com.example.tuneflow"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDm2lCQksNmFOX8XJ9Ba0ch-_96i0O9dBc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
