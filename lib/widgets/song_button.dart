@@ -1,19 +1,21 @@
+import 'dart:ffi';
+
+import 'package:TuneFlow/providers/song_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:TuneFlow/models/song.dart';
-import 'package:TuneFlow/providers/favorite_song.dart';
-import 'package:TuneFlow/providers/song_provider.dart';
-import 'package:TuneFlow/providers/songbutton_provider.dart';
-import 'package:TuneFlow/widgets/audiomanager.dart'; // import the AudioManager class
+import 'package:TuneFlow/widgets/audiomanager.dart';
 
 class SongButton extends ConsumerStatefulWidget {
   const SongButton({
     super.key,
-    this.id = '',
+    required this.id,
     required this.song,
+    this.closeKeyboard,
   });
   final String id;
   final Song song;
+  final void Function()? closeKeyboard;
 
   @override
   ConsumerState<SongButton> createState() {
@@ -23,18 +25,33 @@ class SongButton extends ConsumerStatefulWidget {
 
 class _SongButtonState extends ConsumerState<SongButton> {
   final AudioManager _audioManager = AudioManager();
+  String? _currentPlayingSongLocation;
+
+  @override
+  void initState() {
+    super.initState();
+    _audioManager.songStream.listen((location) {
+      setState(() {
+        _currentPlayingSongLocation = location;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _audioManager.dispose(); // Dispose AudioManager resources
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    //for Favorite Song
-    final favoriteSongs = ref.watch(favoriteSongProvider);
-    final isFavorite = favoriteSongs.contains(widget.song);
+    // Get the current playing song from the SongManagerNotifier
+    final songManager = ref.watch(songProvider.notifier);
 
-    final songButtonState = ref.watch(songButtonProvider(widget.song));
-    final songButtonNotifier =
-        ref.read(songButtonProvider(widget.song).notifier);
-
-    bool color = ref.watch(songProvider).any((c) => c.isRunning && c.id == widget.song.id);
+    // Determine if the song is currently playing
+    final isCurrentlyPlaying =
+        _currentPlayingSongLocation == widget.song.location;
+    final isFavorite = widget.song.isFavorite;
 
     return Stack(
       children: [
@@ -43,39 +60,23 @@ class _SongButtonState extends ConsumerState<SongButton> {
             Expanded(
               child: ListTile(
                 title: Text(
-                  songButtonState.song.name,
-                  style: color
-                      ? const TextStyle(
-                          color: Color.fromARGB(255, 0, 213, 241))
-                      : const TextStyle(color: Colors.white70),
+                  widget.song.name,
+                  style: TextStyle(
+                    color: isCurrentlyPlaying
+                        ? const Color.fromARGB(255, 0, 213, 241)
+                        : Colors.white70,
+                  ),
                 ),
-                subtitle: Text(songButtonState.song.artist),
-                onTap: songButtonState.isRunning
-                    ? null
-                    : () async {
-                        await _audioManager.play(songButtonState.song.location);
-                        songButtonNotifier.toggleRunningStatus();
-                      },
+                subtitle: Text(widget.song.artist),
+                onTap: () async {
+                  // Play the song and update the global state
+                  await _audioManager.play(widget.song.location);
+                  songManager.toggleRunningStatus(widget.song);
+                  print('Song started playing');
+                  widget.closeKeyboard!.call();
+                },
               ),
             ),
-
-            //pause the Song
-            // IconButton(
-            //   onPressed: _isPlaying || _isPaused || songButtonState.isRunning
-            //       ? () async {
-
-            //           await _audioManager.stop();
-            //           songButtonNotifier.toggleRunningStatus();
-            //           setState(() {
-            //             _playerState = PlayerState.stopped;
-            //             _isSongPlaying = false;
-            //           });
-            //         }
-            //       : null,
-            //   icon: !songButtonState.isRunning
-            //       ? const Icon(Icons.pause)
-            //       : const Icon(Icons.play_arrow),
-            // ),
           ],
         ),
         Align(
@@ -94,15 +95,14 @@ class _SongButtonState extends ConsumerState<SongButton> {
                       children: [
                         TextButton.icon(
                           onPressed: () {
-                            final wasAdded = ref
-                                .read(favoriteSongProvider.notifier)
-                                .toggleSongFavoriteStatus(widget.song);
+                            final wasAdded =
+                                songManager.toggleFavoriteStatus(widget.song);
                             ScaffoldMessenger.of(context).clearSnackBars();
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(wasAdded
                                     ? "Added to Favorites"
-                                    : 'Removed from Favorties'),
+                                    : "Removed from Favorites"),
                               ),
                             );
                             Navigator.pop(context);
@@ -127,32 +127,3 @@ class _SongButtonState extends ConsumerState<SongButton> {
     );
   }
 }
-
-// const Spacer(),
-// Text(
-//   widget.title,
-//   style: Theme.of(context).textTheme.titleMedium!.copyWith(
-//         color: Theme.of(context).colorScheme.primary,
-//       ),
-// ),
-// const Spacer(),
-// SizedBox(
-//   width: 100,
-//   child: Text(
-//     widget.artist,
-//     overflow: TextOverflow.ellipsis,
-//     style: Theme.of(context).textTheme.titleMedium!.copyWith(
-//           color: Theme.of(context).colorScheme.primary,
-//         ),
-//   ),
-// ),
-// const Spacer(),
-// Text(
-//   widget.duration,
-//   style: Theme.of(context).textTheme.titleMedium!.copyWith(
-//         color: Theme.of(context).colorScheme.primary,
-//       ),
-// ),
-// IconButton(onPressed: () {}, icon: const Icon(Icons.play_arrow)),
-// IconButton(onPressed: () {}, icon: const Icon(Icons.favorite)),
-// IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert)),
